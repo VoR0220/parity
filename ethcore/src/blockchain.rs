@@ -111,19 +111,14 @@ pub trait BlockProvider {
 	}
 
 	/// Get transaction with given transaction hash.
-	fn transaction(&self, hash: &H256) -> Option<SignedTransaction> {
-		self.transaction_address(hash).and_then(|address| self.transaction_at(&address))
-	}
-
-	/// Get transaction at given address.
-	fn transaction_at(&self, address: &TransactionAddress) -> Option<SignedTransaction> {
-		self.block(&address.block_hash).map(|bytes| BlockView::new(&bytes).transactions()).and_then(|t| t.into_iter().nth(address.index))
+	fn transaction(&self, address: &TransactionAddress) -> Option<LocalizedTransaction> {
+		self.block(&address.block_hash).and_then(|bytes| BlockView::new(&bytes).localized_transaction_at(address.index))
 	}
 
 	/// Get a list of transactions for a given block.
-	/// Returns None if block deos not exist.
-	fn transactions(&self, hash: &H256) -> Option<Vec<SignedTransaction>> {
-		self.block(hash).map(|bytes| BlockView::new(&bytes).transactions())
+	/// Returns None if block does not exist.
+	fn transactions(&self, hash: &H256) -> Option<Vec<LocalizedTransaction>> {
+		self.block(hash).map(|bytes| BlockView::new(&bytes).localized_transactions())
 	}
 
 	/// Returns reference to genesis hash.
@@ -864,7 +859,7 @@ mod tests {
 		let transactions = bc.transactions(&b1_hash).unwrap();
 		assert_eq!(transactions.len(), 7);
 		for t in transactions {
-			assert_eq!(bc.transaction(&t.hash()).unwrap(), t);
+			assert_eq!(bc.transaction(&bc.transaction_address(&t.hash()).unwrap()).unwrap(), t);
 		}
 	}
 }
